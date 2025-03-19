@@ -42,7 +42,7 @@ if (fs.existsSync(dbFilePath)) {
   console.log('Vector database created and saved to file.');
 }
 
-const query = "How about indentation in HappyLang? Is it like Python or more like a C-family language?";
+const query = "From C#, I know how to handle exceptions. How about in HappyLang?";
 const queryEmbedding = await client.embeddings.create({
   model: "text-embedding-3-large",
   input: query
@@ -59,11 +59,20 @@ const similarities = inMemVectorDb.map(item => ({
 // Sort the similarities in descending order
 const sortedSimilarities = similarities.sort((a, b) => b.similarity - a.similarity);
 
-// Print the top 3 results
-console.log('Top 3 results:');
-for (let i = 0; i < 3; i++) {
-  console.log(`${i + 1}. ${sortedSimilarities[i].content}`);
-}
+// Read prompt.md from disk
+const prompt = fs.readFileSync('./prompt.md', 'utf-8');
+
+// Replace {KNOWLEDGE} in prompt with the top 3 results
+const top3Results = sortedSimilarities.slice(0, 3).map(result => result.content).join('\n\n---\n\n');
+const updatedPrompt = prompt.replace('{KNOWLEDGE}', top3Results);
+
+const response = await client.responses.create({
+  model: "gpt-4o",
+  instructions: updatedPrompt,
+  input: query
+});
+
+console.log(response.output_text);
 
 function loadMarkdownFiles(): string[] {
   const dataDir = './data';
