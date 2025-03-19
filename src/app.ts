@@ -11,7 +11,7 @@ const client = new OpenAI({
 });
 
 const dbFilePath = 'inMemVectorDb.json';
-let inMemVectorDb;
+let inMemVectorDb: { content: string; embedding: number[] }[] = [];
 
 // Check if the vector database file already exists
 if (fs.existsSync(dbFilePath)) {
@@ -42,6 +42,29 @@ if (fs.existsSync(dbFilePath)) {
   console.log('Vector database created and saved to file.');
 }
 
+const query = "How about indentation in HappyLang? Is it like Python or more like a C-family language?";
+const queryEmbedding = await client.embeddings.create({
+  model: "text-embedding-3-large",
+  input: query
+});
+
+const queryEmbeddingVector = queryEmbedding.data[0].embedding;
+
+// Calculate the dot product of the query embedding with each embedding in the "database" inMemVectorDb
+const similarities = inMemVectorDb.map(item => ({
+  content: item.content,
+  similarity: dot(queryEmbeddingVector, item.embedding)
+}));
+
+// Sort the similarities in descending order
+const sortedSimilarities = similarities.sort((a, b) => b.similarity - a.similarity);
+
+// Print the top 3 results
+console.log('Top 3 results:');
+for (let i = 0; i < 3; i++) {
+  console.log(`${i + 1}. ${sortedSimilarities[i].content}`);
+}
+
 function loadMarkdownFiles(): string[] {
   const dataDir = './data';
   const markdownFiles: string[] = [];
@@ -66,5 +89,3 @@ function loadMarkdownFiles(): string[] {
 
   return markdownFiles;
 };
-
-
